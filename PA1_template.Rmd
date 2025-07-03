@@ -1,0 +1,78 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+author: "Sergei Zykov"
+output: html_document
+date: "2025-07-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+```
+
+
+
+```{r}
+activity <- read.csv("activity.csv")
+activity$date <- as.Date(activity$date, format = "%Y-%m-%d")
+total_steps_day <- activity %>%
+  filter(!is.na(steps)) %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps))
+
+ggplot(total_steps_day, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "skyblue", color = "black") +
+  labs(title = "Total Steps Per Day", x = "Steps", y = "Frequency")
+
+mean(total_steps_day$total_steps)
+median(total_steps_day$total_steps)
+
+interval_avg <- activity %>%
+  filter(!is.na(steps)) %>%
+  group_by(interval) %>%
+  summarise(mean_steps = mean(steps))
+
+ggplot(interval_avg, aes(x = interval, y = mean_steps)) +
+  geom_line(color = "red") +
+  labs(title = "Average Daily Activity Pattern", x = "5-minute Interval", y = "Average Steps")
+
+interval_avg[which.max(interval_avg$mean_steps), ]
+
+sum(is.na(activity$steps))
+
+activity_filled <- activity
+interval_means <- interval_avg$mean_steps
+names(interval_means) <- interval_avg$interval
+
+activity_filled$steps <- ifelse(is.na(activity_filled$steps),
+                                interval_means[as.character(activity_filled$interval)],
+                                activity_filled$steps)
+
+total_steps_filled <- activity_filled %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps))
+
+ggplot(total_steps_filled, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "lightgreen", color = "black") +
+  labs(title = "Total Steps Per Day (After Imputation)", x = "Steps", y = "Frequency")
+
+mean(total_steps_filled$total_steps)
+median(total_steps_filled$total_steps)
+
+activity_filled$day_type <- ifelse(weekdays(activity_filled$date) %in% c("Saturday", "Sunday"),
+                                   "weekend", "weekday")
+activity_filled$day_type <- as.factor(activity_filled$day_type)
+
+avg_steps_type <- activity_filled %>%
+  group_by(interval, day_type) %>%
+  summarise(mean_steps = mean(steps), .groups = "drop")
+ggplot(avg_steps_type, aes(x = interval, y = mean_steps)) +
+  geom_line(color = "darkblue") +
+  facet_wrap(~ day_type, ncol = 1) +
+  labs(title = "Average Steps per Interval: Weekday vs Weekend",
+       x = "5-minute Interval", y = "Average Steps")
+
+```
+
+
